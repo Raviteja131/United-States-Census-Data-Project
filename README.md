@@ -4,331 +4,367 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-
-# Data-Set Selected:
-
-## Gun Violence Data
-
-### Description
-Information on instances of gun violence documented in the United States from January 2013 through March 2018. Note that gun violence incidents in 2013 are not all included, with only 279 incidents from 2013 in this data set, notably missing the Las Vegas Mass Shooting. The data is contained in gunViolenceFull.csv.
-
-### Source:
-Data was obtained from the GitHub repo https://github.com/jamesqo/gun-violence-data, which originally obtained the data from the Gun Violence Archive’s website. From the organization’s description:
-Gun Violence Archive (GVA) is a not for profit corporation formed in 2013 to provide free online public access to accurate information about gun-related violence in the United States. GVA will collect and check for accuracy, comprehensive information about gun-related violence in the U.S. and then post and disseminate it online.
-
-
-# Project Requirements
-
-### Loading Required Libraries
 ```{r}
-
-# Some of these libraries might not be installed in your system, please install them using console first before proceeding with this step.
 library(tidyverse)
-library(stringr)
 library(skimr)
-library(knitr)
-library(ggthemes)
-library(VIM)
-library(naniar)
-library(lubridate)
-library(flextable)
-library(gt)
-library(gtExtras)
-library(kableExtra)
-library(viridis)
-library(ggmap)
-```
-### Loading the Given Data
-```{r}
-Gun_Data <- read.csv('gunviolenceFull.csv')
-head(Gun_Data)
-```
-
-
-## Data Dictionary and Exploratory Data Analysis
-
-
-### Data Dictionary and missingness patterns
-```{r}
-
-# Define variable names, descriptions, units, and types
-var_names <- c("incident_id", "date", "state", "city_or_county", "address", "n_killed", "n_injured", "incident_url", "source_url", "incident_url_fields_missing", "congressional_district", "gun_stolen", "gun_type", "incident_characteristics", "lat", "location_description", "long", "n_guns_involved", "notes", "participant_age", "participant_age_group", "participant_gender", "participant_name", "participant_relationship", "participant_status", "participant_type", "sources", "state_house_district", "state_senate_district", "address_full")
-var_desc <- c("Unique identifier for each incident", "Date of the incident", "State where the incident occurred", "City or county where the incident occurred", "Address of the incident", "Number of people killed in the incident", "Number of people injured in the incident", "URL for the incident details page on the Gun Violence Archive website", "URL for the source article about the incident", "Indicator of missing fields in the incident URL", "Congressional district where the incident occurred", "Indicator of whether the gun was stolen", "Type of gun used in the incident", "Description of the incident characteristics", "Latitude of the incident location", "Description of the incident location", "Longitude of the incident location", "Number of guns involved in the incident", "Additional notes about the incident", "Age of each participant in the incident", "Age group of each participant in the incident", "Gender of each participant in the incident", "Name of each participant in the incident", "Relationship of each participant to the incident", "Status of each participant in the incident", "Type of each participant in the incident", "Sources of information about the incident", "State House district where the incident occurred", "State Senate district where the incident occurred", "Full address of the incident location")
-var_units <- c("", "", "", "", "", "", "", "", "", "", "", "", "", "", "degrees", "", "degrees", "", "", "", "", "", "", "", "", "", "", "", "", "")
-var_type <- c("integer", "date", "character", "character", "character", "integer", "integer", "character", "character", "logical", "integer", "character", "character", "character", "numeric", "character", "numeric", "integer", "character", "character", "character", "character", "character", "character", "character", "character","character", "integer", "integer", "character")
-
-
-# Create data frame for Data Dictionary
-data_dict <- data.frame(var_names, var_desc, var_units, var_type)
-
-# Print Data Dictionary
-knitr::kable(data_dict, col.names = c("Variable Name", "Description", "Units", "Type"), caption = "Data Dictionary for Sample Data")
-
-# Using the glimpse to get the structure of data.
-Gun_Data %>% glimpse()
-
-# Using Skim to get the high-level characteristics of the dataset.
-Gun_Data %>% skimr::skim()
-
-# Generate the missingness pattern plot
-gg_miss_var(Gun_Data)
+library(stringr)
+library(dplyr)
+library(ggplot2)
 
 ```
 
-### Merging Datasets
+## 1. Import your data into R.
+
 ```{r}
-# First, we'll create a dataset state_counts that counts the number of incidents in each state
-state_counts <- aggregate(incident_id ~ state, data = Gun_Data, FUN = length)
+## 1. Importing data into R
 
-# Next, we'll create a dataset state_killed that sums the number of people killed in each state
-state_killed <- aggregate(n_killed ~ state, data = Gun_Data, FUN = sum)
-
-#Finally, we can merge the two datasets based on the state variable
-state_merged <- merge(state_counts, state_killed, by = "state")
-
-
-ggplot(state_merged, aes(x = state)) +
-  geom_bar(aes(y = incident_id), stat = "identity", fill = "blue", alpha = 0.7) +
-  geom_bar(aes(y = n_killed), stat = "identity", fill = "red", alpha = 0.7) +
-  labs(x = "State", y = "Count", title = "Gun Violence Incidents and Deaths by State")
+data <- read_csv("https://raw.githubusercontent.com/dilernia/STA418-518/main/Data/census_data_2008-2021.csv") 
+head(data)
 ```
 
-### Date / Time Manipulation
+## 2. Explore and display high-level characteristics of your data set, e.g., important variables and their types, different levels for factor variables, any patterns of missing values.
+
 ```{r}
-# extract the month from the date variable
-Gun_Data$month <- month(ymd(Gun_Data$date))
-
-# view the new variable
-head(Gun_Data$month,100)
-```
-
-### String Manipulattion
-```{r}
-# extract only the street name from the address variable
-Gun_Data$street <- str_extract(Gun_Data$address, "^[^,]*")
-
-# output the modified dataframe
-head(Gun_Data$street)
-```
-
-### Tables of Summary Statistics
-```{r}
-# Table 1
-
-incident_summary <- Gun_Data %>%
-  group_by(state) %>%
-  summarise(n_incidents = n()) %>%
-  arrange(desc(n_incidents))
-
-flextable(incident_summary) %>%
-  set_caption("Table 1: Number of gun violence incidents by state") %>%
-  theme_vanilla()
+## To explore high-level characteristics of the data using the glimpse() function.
+glimpse(data)
 ```
 
 ```{r}
-# Table 2
+## To explore any patterns of missing values
 
-death_injury_summary <- Gun_Data %>%
-  separate(date, into = c("month", "day", "year"), sep = "/") %>%
+skim(data)
+```
+
+```{r}
+## To get the column names of the dataset
+
+colnames(data)
+```
+
+## 1. At least 5 distinct types of ggplot visualizations together visualizing at least 2 quantitative and 2 categorical variables. For example, side-by-side box plots, two separate scatter plots for different variables, and a bar chart would count as three. You are allowed and encouraged to create visualizations we did not explicitly cover in class.
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+
+# 1. Side-by-side box plots for median income by state
+ggplot(data, aes(x = county_state, y = median_income, fill = county_state)) +
+  geom_boxplot() +
+  theme(legend.position = "none")
+
+# 2. Scatter plot for median income vs. median monthly rent cost
+ggplot(data, aes(x = median_income, y = median_monthly_rent_cost)) +
+  geom_point()
+
+# 3. Stacked bar chart for proportion of males and females by state
+data %>%
+  group_by(county_state) %>%
+  summarize(prop_male = mean(prop_male), prop_female = mean(prop_female)) %>%
+  pivot_longer(cols = c(prop_male, prop_female), names_to = "gender", values_to = "proportion") %>%
+  ggplot(aes(x = county_state, y = proportion, fill = gender)) +
+  geom_bar(stat = "identity", position = "stack")
+
+# 4. Heatmap for median income by state and year
+ggplot(data, aes(x = county_state, y = year, fill = median_income)) +
+  geom_tile()
+
+# 5. Line plot for poverty rate over time
+ggplot(data, aes(x = year, y = prop_poverty, group = 1)) +
+  geom_line() +
+  geom_point()
+
+```
+
+## Generating 5 distinct types of ggplot visualizations for the top 20 county_states.
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Filter data to top 20 county states by population
+top_county_states <- data %>%
+  group_by(county_state) %>%
+  summarize(total_population = sum(population)) %>%
+  arrange(desc(total_population)) %>%
+  slice_head(n = 20) %>%
+  pull(county_state)
+
+data_top20 <- data %>%
+  filter(county_state %in% top_county_states)
+
+# 1. Side-by-side box plots for median income by state
+ggplot(data_top20, aes(x = county_state, y = median_income, fill = county_state)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 2. Scatter plot for median income vs. median monthly rent cost
+ggplot(data_top20, aes(x = median_income, y = median_monthly_rent_cost)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 3. Stacked bar chart for proportion of males and females by state
+data_top20 %>%
+  group_by(county_state) %>%
+  summarize(across(c(prop_male, prop_female), mean)) %>%
+  pivot_longer(cols = c(prop_male, prop_female), names_to = "gender", values_to = "proportion") %>%
+  ggplot(aes(x = county_state, y = proportion, fill = gender)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 4. Heatmap for median income by state and year
+ggplot(data_top20, aes(x = county_state, y = year, fill = median_income)) +
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 5. Line plot for poverty rate over time
+ggplot(data_top20, aes(x = year, y = prop_poverty)) +
+  geom_line() +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+
+
+## 2. At least two tables of summary statistics obtained using group-wise operations containing at least three statistics for each group, e.g., the sample size, sample mean, and sample standard deviation.
+
+```{r}
+## To obtain summary statistics for each county/state
+
+county_state_stats <- data %>%
+  group_by(county_state) %>%
+  summarize(
+    sample_size = n(),
+    mean_pop = mean(population),
+    sd_pop = sd(population),
+    mean_income = mean(median_income),
+    sd_income = sd(median_income),
+    mean_rent = mean(median_monthly_rent_cost),
+    sd_rent = sd(median_monthly_rent_cost)
+  )
+
+```
+
+
+```{r}
+## To obtain summary statistics for each year
+
+year_stats <- data %>%
   group_by(year) %>%
-  summarise(n_killed = sum(n_killed), n_injured = sum(n_injured))
+  summarize(
+    sample_size = n(),
+    mean_pop = mean(population),
+    sd_pop = sd(population),
+    mean_income = mean(median_income),
+    sd_income = sd(median_income),
+    mean_home_cost = mean(median_monthly_home_cost),
+    sd_home_cost = sd(median_monthly_home_cost)
+  )
 
-kable(death_injury_summary, format = "markdown", align = "c") %>%
-  kable_styling() %>%
-  add_header_above(c(" " = 1, "Total Number of Deaths and Injuries by Year" = 2)) %>%
-  row_spec(0, bold = TRUE)
 ```
 
-## Data Visualizations
-
-
-Plot 1: Scatter plot of latitude and longitude of incidents
-
-        The plot shows the latitude and longitude of each gun violence incident.
-        The x-axis represents the longitude and the y-axis represents the latitude.
-        The title of the plot is "Geographic Distribution of Gun Violence Incidents" and the caption includes the source of the data.
-        The points are colored in blue for emphasis.
-        The plot shows that gun violence incidents are distributed across the United States, with some clustering in urban areas.
-```{r}
-# Create a scatter plot of the latitude and longitude of incidents
-ggplot(Gun_Data, aes(x = long, y = lat, color = state)) +
-  geom_point(alpha = 0.6) +
-  labs(title = "Latitude and Longitude of Incidents",
-       x = "Longitude",
-       y = "Latitude",
-       color = "State") +
-  theme(plot.title = element_text(hjust = 0.5))
-```
-Plot2:
-
-Bar plot that shows the number of gun-related deaths per state. The data is stored in a data frame called Gun_Data. The x-axis represents the states and the y-axis represents the number of gun-related deaths.
+## Creating a stacked bar chart that displays the population by year and gender
 
 ```{r}
-ggplot(data = Gun_Data, aes(x = state, y = n_killed)) +
-  geom_bar(stat = "identity", fill = "black", color = "darkred") + 
-  labs(title = "Gun-related Deaths per State") + 
-  theme(axis.text.y = element_text(hjust = 1, size = 8)) + 
-  coord_flip()
-```
-
-Plot 3: 
-
-```{r}
-# Create a summary table of number of incidents per state
-state_summary <- Gun_Data %>% 
-  group_by(state) %>% 
-  summarize(num_incidents = n())
-
-# Create a total count of incidents
-total_incidents <- sum(state_summary$num_incidents)
-
-# Add a column for percentage of incidents
-state_summary$percent_incidents <- state_summary$num_incidents / total_incidents * 100
-
-# Sort by percent_incidents descending
-state_summary <- state_summary[order(-state_summary$percent_incidents),]
-
-# Create donut chart
-ggplot(state_summary, aes(x = "", y = percent_incidents, fill = state)) + 
-  geom_bar(stat = "identity", width = 1, color = "white") +
-  coord_polar(theta = "y", start = 0, direction = -1) +
-  scale_fill_hue(name = "State") +
-  theme_void() +
-  theme(legend.position = "bottom") +
-  labs(title = "Gun Violence Incidents by State",
-       subtitle = paste("Total Incidents:", total_incidents),
-       fill = "State", 
-       caption = "Data source: Gunviolence.csv")
-```
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
 
 
-Plot 4:
+# Aggregate population by year and gender
+pop_data <- data %>%
+  group_by(year) %>%
+  summarize(prop_male = mean(prop_male * population), 
+            prop_female = mean(prop_female * population)) %>%
+  pivot_longer(cols = c(prop_male, prop_female), 
+               names_to = "gender", 
+               values_to = "population")
 
-```{r}
-age_data <- Gun_Data %>%
-  filter(!is.na(participant_age_group)) %>%
-  mutate(participant_age_group = factor(participant_age_group, levels = c("Child 0-11", "Teen 12-17", "Adult 18+")),
-         date = as.Date(date)) %>%
-  group_by(participant_age_group, year = format(date, "%Y")) %>%
-  summarise(count = n()) %>%
-  arrange(year, participant_age_group)
-
-ggplot(age_data, aes(x = year, y = count, fill = participant_age_group)) +
+# Create stacked bar chart
+ggplot(pop_data, aes(x = year, y = population, fill = gender)) +
   geom_bar(stat = "identity") +
-  labs(title = "Participant Age Groups in Gun Violence Incidents", x = "Year", y = "Number of Participants", fill = "Age Group") +
-  scale_fill_manual(values = c("#1f77b4", "#ff7f0e", "#2ca02c")) +
+  labs(title = "Population by Year and Gender", 
+       x = "Year", 
+       y = "Population") +
+  theme(plot.title = element_text(size = 12, face = "bold"),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12)) 
+
+```
+
+## 3. Merging at least two tables of data together to produce the results tables or visualizations
+
+
+```{r}
+names(pop_data)
+```
+
+
+```{r}
+names(year_stats)
+```
+
+```{r}
+
+# Merging year_stats and pop_data by year
+merged_data <- merge(year_stats, pop_data, by = "year")
+
+# Creating a scatter plot of population by mean_income, colored by gender
+# This visualization allows us to see whether there are any patterns or trends in the data, such as differences in the relationship between population and income by gender.
+
+ggplot(data = merged_data, aes(x = mean_income, y = population, color = gender)) +
+  geom_point() +
+  ggtitle("Population and Mean Income by Gender") +
+  xlab("Mean Income") +
+  ylab("Population")
+
+```
+
+
+## 4. At least one data set should be pivoted between long and wide format
+
+```{r}
+# Here each observation is a unique combination of county_state and variable, and the value column contains the corresponding value for that combination.
+
+# Pivoting county_state_stats from wide to long format
+
+county_state_stats_long <- county_state_stats %>%
+  pivot_longer(cols = c(sample_size, mean_pop, sd_pop, mean_income, sd_income, mean_rent, sd_rent),
+               names_to = "variable",
+               values_to = "value")
+
+# Printing the first few rows of the long-format data
+
+head(county_state_stats_long)
+
+```
+
+
+## 5. At least one string variable that is manipulated using stringr functions
+
+** Here we have used stringr functions such as str_sub to extract sub string of a string. Here we are extracting state name from county_state **
+
+```{r}
+library(stringr)
+
+# creating a new column with state abbreviation
+data <- data %>%
+  mutate(state = str_sub(county_state, -2)) 
+
+# removing the underscores from the county_state column
+data <- data %>%
+  mutate(county_state = str_replace(county_state, "_", " "))
+
+# extracting only the state name from county_state column
+data <- data %>%
+  mutate(state_name = str_extract(county_state, "([A-Za-z]+)\\s*$")) 
+
+
+```
+
+
+## 6. At least one Monte Carlo simulation for conducting statistical inference of your data
+
+
+```{r}
+# Defining population and median income parameters
+pop_mean <- 10000
+pop_sd <- 5000
+income_mean <- 50000
+income_sd <- 10000
+
+# Generating 1000 random samples for population and median income using Monte Carlo simulation
+n_samples <- 1000
+pop_samples <- rnorm(n_samples, mean = pop_mean, sd = pop_sd)
+income_samples <- rnorm(n_samples, mean = income_mean, sd = income_sd)
+
+# Calculating 95% confidence intervals for population and median_income
+pop_ci <- quantile(pop_samples, c(0.025, 0.975))
+income_ci <- quantile(income_samples, c(0.025, 0.975))
+
+# Printing confidence intervals
+cat("95% Confidence Interval for Population: [", round(pop_ci[1],2), ",", round(pop_ci[2],2), "]\n")
+cat("95% Confidence Interval for Median Income: [", round(income_ci[1],2), ",", round(income_ci[2],2), "]\n")
+
+# Ploting histograms of the simulated population and median_income data
+hist(pop_samples, breaks = 20, main = "Simulated Population Data", xlab = "Population")
+hist(income_samples, breaks = 20, main = "Simulated Median Income Data", xlab = "Median Income")
+
+```
+
+
+## 7. At least one bootstrap approach for conducting meaningful statistical inference of your data
+
+```{r}
+# Extracting the population column from the data
+population_data <- data$population
+
+# Define the bootstrap function
+bootstrap_mean <- function(data, nboot, alpha) {
+  # Calculate the observed mean of the data
+  obs_mean <- mean(data)
+  
+  # Initialize an empty vector to store the bootstrap means
+  boot_means <- rep(0, nboot)
+  
+  # Generate nboot bootstrap samples and calculate the mean of each sample
+  for (i in 1:nboot) {
+    boot_sample <- sample(data, replace = TRUE)
+    boot_means[i] <- mean(boot_sample)
+  }
+  
+  # Calculate the lower and upper confidence bounds
+  lb <- quantile(boot_means, prob = (1 - alpha) / 2)
+  ub <- quantile(boot_means, prob = 1 - (1 - alpha) / 2)
+  
+  # Return a list containing the observed mean, bootstrap means, and confidence bounds
+  return(list(obs_mean = obs_mean, boot_means = boot_means, lb = lb, ub = ub))
+}
+
+# Set the number of bootstrap samples and the confidence level
+nboot <- 1000
+alpha <- 0.05
+
+# Call the bootstrap function on the population data
+boot_results <- bootstrap_mean(population_data, nboot, alpha)
+
+# Print the observed mean and confidence bounds
+cat("Observed mean:", boot_results$obs_mean, "\n")
+cat("95% Confidence Interval: (", boot_results$lb, ",", boot_results$ub, ")\n")
+
+```
+
+## Creating a histogram with the bootstrap means as the x-axis and the frequency of occurrence as the y-axis. 
+
+** The observed mean will be marked with a red dashed line, and the confidence interval will be marked with blue dashed lines.**
+
+** Here we have used the geom_vline() function to draw vertical lines on the plot.**
+
+
+
+```{r}
+library(ggplot2)
+
+# Create a data frame of the bootstrap means
+boot_means_df <- data.frame(boot_means = boot_results$boot_means)
+
+# Create a histogram of the bootstrap means with confidence interval lines
+ggplot(boot_means_df, aes(x = boot_means)) +
+  geom_histogram(binwidth = 10000, color = "black", fill = "skyblue", alpha = 0.5) +
+  geom_vline(xintercept = boot_results$obs_mean, color = "red", linetype = "dashed", size = 1) +
+  geom_vline(xintercept = boot_results$lb, color = "blue", linetype = "dashed", size = 1) +
+  geom_vline(xintercept = boot_results$ub, color = "blue", linetype = "dashed", size = 1) +
+  labs(title = "Bootstrap Means of Population Data",
+       x = "Bootstrap Mean",
+       y = "Frequency") +
   theme_bw()
+
 ```
 
-Plot 5:
-
-```{r}
-# create a ridgeline chart with the number of shooting victims on the x-axis and the state on the y-axis.
-
-library(ggridges)
-
-# Create a subset of the data with only the variables we need
-shootings_sub <- Gun_Data %>% 
-  select(state, n_killed, n_injured)
-
-# Create a ridgeline chart
-ggplot(shootings_sub, aes(x = n_killed + n_injured, y = state, fill = ..x..)) +
-  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
-  scale_fill_gradient(low = "gray90", high = "red") +
-  labs(title = "Number of Shooting Victims by State", 
-       x = "Number of Victims", y = "State") +
-  theme_minimal() + 
-   xlim(0, 3)
-```
-
-### Monte Carlo Methods of Inference
-
-One non-trivial question we can explore using Monte Carlo simulation is whether there is a significant difference in the average number of people killed in mass shootings in the top 10 states with the most incidents compared to the bottom 10 states. We can formulate the null and alternative hypotheses as follows:
-
-Null hypothesis: There is no significant difference in the average number of people killed in mass shootings between the top 10 states and the bottom 10 states.
-Alternative hypothesis: The top 10 states have a significantly higher average number of people killed in mass shootings than the bottom 10 states.
-
-To test this hypothesis, we can use a permutation test. Specifically, we can randomly permute the state labels and calculate the difference in means between the top 10 and bottom 10 states. We can repeat this process many times to obtain the null distribution of the test statistic. We can then compare the observed difference in means to the null distribution and calculate the p-value as the proportion of simulated differences that are greater than or equal to the observed difference.
-
-```{r}
-# Subset the data to include only mass shootings
-mass_shootings <- Gun_Data %>%
-  filter(n_killed >= 4)
-
-# Create a vector indicating whether each state is in the top 10 or bottom 10
-top_bottom_vec <- Gun_Data %>%
-  group_by(state) %>%
-  summarize(total_incidents = n()) %>%
-  arrange(desc(total_incidents)) %>%
-  mutate(top_bottom = ifelse(rank(total_incidents) <= 10, "Top 10", ifelse(rank(total_incidents) >= 43, "Bottom 10", "Other"))) %>%
-  filter(top_bottom %in% c("Top 10", "Bottom 10")) %>%
-  pull(top_bottom)
-
-# Define the test statistic function
-diff_means <- function(x, y) {
-  mean(mass_shootings$n_killed[x]) - mean(mass_shootings$n_killed[y])
-}
-
-# Compute the observed difference in means
-obs_diff <- diff_means(top_bottom_vec == "Top 10", top_bottom_vec == "Bottom 10")
-
-# Permutation test
-set.seed(123)
-n_permutations <- 10000
-permuted_diffs <- replicate(n_permutations, {
-  permuted_vec <- sample(top_bottom_vec)
-  diff_means(permuted_vec == "Top 10", permuted_vec == "Bottom 10")
-})
-
-# Compute p-value
-p_value <- mean(abs(permuted_diffs) >= abs(obs_diff))
-
-# Display null distribution
-null_dist <- tibble(diff = permuted_diffs) %>%
-  ggplot(aes(x = diff)) +
-  geom_histogram(binwidth = 0.5, color = "black", fill = "gray") +
-  geom_vline(xintercept = obs_diff, color = "red", size = 1.5) +
-  labs(title = "Null Distribution of Difference in Means",
-       x = "Difference in Means",
-       y = "Frequency") +
-  theme_classic()
-
-# Display results
-cat("Observed difference in means: ", obs_diff, "\n")
-cat("P-value: ", p_value, "\n")
-null_dist
-```
-
-
-
-### Bootstrap Methods
-
-```{r}
-# Subset data to only include incidents in California
-ca_data <- Gun_Data %>% filter(state == "California")
-
-# Define function to calculate median number of people injured in bootstrap samples
-med_boot <- function(data, i) {
-  med <- median(sample(data$n_injured, replace = TRUE))
-  return(med)
-}
-
-# Generate bootstrap distribution
-set.seed(123) # for reproducibility
-boot_dist <- replicate(1000, med_boot(ca_data, i = 1:nrow(ca_data)))
-
-# Calculate 95% confidence interval
-ci_lower <- quantile(boot_dist, 0.025)
-ci_upper <- quantile(boot_dist, 0.975)
-
-# Plot bootstrap distribution
-ggplot(data.frame(median = boot_dist), aes(x = median)) +
-  geom_histogram(binwidth = 0.5, color = "black", fill = "lightblue") +
-  geom_vline(xintercept = median(ca_data$n_injured), color = "red", linetype = "dashed", size = 1.2) +
-  geom_vline(xintercept = ci_lower, color = "green", linetype = "dashed", size = 1.2) +
-  geom_vline(xintercept = ci_upper, color = "green", linetype = "dashed", size = 1.2) +
-  labs(title = "Bootstrap Distribution of Median Number of People Injured in Gun Violence Incidents in California",
-       x = "Median Number of People Injured",
-       y = "Frequency") +
-  theme_minimal()
-```
+** The histogram plot explains the visual representation of the bootstrap means and confidence bounds for the population data set, allowing for easy interpretation and communication of the results. **
